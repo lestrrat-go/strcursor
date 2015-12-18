@@ -77,6 +77,10 @@ func TestBuffer(t *testing.T) {
 		return
 	}
 
+	if !assert.Equal(t, []byte{'I', 'I'}, b.PeekBytes(2), "PeekBytes matches") {
+		return
+	}
+
 	if !assert.Equal(t, []byte{'I', 'I'}, b.ConsumeBytes(2), "ConsumeBytes matches") {
 		return
 	}

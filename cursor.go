@@ -70,6 +70,19 @@ func (b *Cursor) fill(n int) bool {
 	return true
 }
 
+// PeekBytes returns n bytes from the beginning of the cursor
+func (b *Cursor) PeekBytes(n int) []byte {
+	if b.Done() {
+		return nil
+	}
+
+	if b.Len() < n {
+		return b.buf[b.off:]
+	}
+
+	return b.buf[b.off:b.off+n]
+}
+
 // Peek returns the n-th rune in the buffer (base 1, so if you want the
 // 8th rune, you use n = 8, not n = 7)
 func (b *Cursor) Peek(n int) rune {
