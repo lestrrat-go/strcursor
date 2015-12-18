@@ -185,3 +185,26 @@ func (b *Cursor) ConsumePrefix(s string) bool {
 	b.Advance(l)
 	return true
 }
+
+// Consume n characters. This is usually used in conjunction with Peek(): after you Peek()
+// for the range you want, you can call Consume with that many number of characters that
+// want. This method does NOT check if you have enough characters in your buffer, so if
+// you happen to have less than requested, it will return as many characters as there are
+// available in the buffer
+func (b *Cursor) Consume(n int) string {
+	if debug.Enabled {
+		debug.Printf("Cursor.Consume(%d)", n)
+	}
+
+	if !b.fill(n) {
+		// we couldn't get enough in the buffer, so be careful not to
+		// go out of bounds -- actually, just return the entire thing
+		s := string(b.cache)
+		b.Advance(len(b.cache))
+		return s
+	}
+
+	s := string(b.cache[:n])
+	b.Advance(n)
+	return s
+}

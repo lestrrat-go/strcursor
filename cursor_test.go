@@ -51,10 +51,22 @@ func TestBuffer(t *testing.T) {
 		return
 	}
 
-	for i := 0; i < l - 10; i++ {
+	for i := 0; i < 5; i++ {
 		if !assert.True(t, utf8.ValidRune(b.Next()), "utf8.Valid(b.Next()) is true") {
 			return
 		}
+	}
+
+	if !assert.Equal(t, "ASC", b.Consume(3)) {
+		return
+	}
+
+	if !assert.Equal(t, "IIと日本語が入り交じった文章です", b.Consume(100)) {
+		return
+	}
+
+	if !assert.Equal(t, "", b.Consume(100)) {
+		return
 	}
 
 	if !assert.True(t, b.Done(), "Done is true") {
