@@ -192,6 +192,21 @@ func (b *Cursor) HasPrefix(s string) bool {
 	return true
 }
 
+// ConsumePrefixBytes checks if the given byte sequence exists at the beginning
+// of the Cursor, and if it does, consumes the buffer by advancing the
+// cursor as required.
+func (b *Cursor) ConsumePrefixBytes(p []byte) bool {
+	if debug.Enabled {
+		debug.Printf("Cursor.ConsumePrefixBytes(%#v)", p)
+	}
+
+	if b.HasPrefixBytes(p) {
+		b.AdvanceBytes(len(p))
+		return true
+	}
+	return false
+}
+
 // ConsumePrefix checks if the given string exists at the beginning of the
 // Cursor, and if it does, consumes the buffer by advancing the cursor
 // as required.
