@@ -3,6 +3,7 @@
 package strcursor
 
 import (
+	"bytes"
 	"math/rand"
 	"time"
 	"unicode/utf8"
@@ -83,6 +84,21 @@ func (b *Cursor) Peek(n int) rune {
 	return b.cache[n-1]
 }
 
+func (b *Cursor) AdvanceBytes(n int) bool {
+	if n <= 0 {
+		return false
+	}
+
+	if b.Len() < n {
+		return false
+	}
+
+	b.cache = nil
+	b.off += n
+	b.cacheoff = b.off
+	return true
+}
+
 // Advance moves the cursor n characters so that that many characters are
 // deemed "consumed" already. Advance must receive a number >= 0. If you
 // pass a number < 1, there are not enough characters to be consumed, or you
@@ -142,9 +158,22 @@ func (b *Cursor) Done() bool {
 	return b.off >= b.bufmax
 }
 
+// HasPrefixBytes checks if the given byte sequence exists at the
+// beginning of the Cursor. This method does NOT advance the cursor
+func (b *Cursor) HasPrefixBytes(p []byte) bool {
+	if debug.Enabled {
+		debug.Printf("Cursor.HasPrefixBytes(%#v)", p)
+	}
+
+	if b.Len() < len(p) {
+		return false
+	}
+
+	return bytes.Equal(b.buf[b.off:b.off+len(p)], p)
+}
+
 // HasPrefix checks if the given string exists at the beginning of the
-// Cursor. This method does NOT advance the cursor, so it's basically a
-// string-wise Peek() + equality check
+// Cursor.  This method does NOT advance the cursor
 func (b *Cursor) HasPrefix(s string) bool {
 	if debug.Enabled {
 		debug.Printf("Cursor.HasPrefix(%s)", s)
@@ -186,11 +215,11 @@ func (b *Cursor) ConsumePrefix(s string) bool {
 	return true
 }
 
-// Consume n characters. This is usually used in conjunction with Peek(): after you Peek()
-// for the range you want, you can call Consume with that many number of characters that
-// want. This method does NOT check if you have enough characters in your buffer, so if
-// you happen to have less than requested, it will return as many characters as there are
-// available in the buffer
+// Consume consumes n characters. This is usually used in conjunction with Peek(): 
+// after you Peek() for the range you want, you can call Consume with that many
+// number of characters that want. This method does NOT check if you have enough
+// characters in your buffer, so if you happen to have less than requested, it will
+// return as many characters as there are available in the buffer
 func (b *Cursor) Consume(n int) string {
 	if debug.Enabled {
 		debug.Printf("Cursor.Consume(%d)", n)
@@ -207,6 +236,16 @@ func (b *Cursor) Consume(n int) string {
 	s := string(b.cache[:n])
 	b.Advance(n)
 	return s
+}
+
+// ConsumeBytes consumes n bytes.
+func (b *Cursor) ConsumeBytes(n int) []byte {
+	if b.Len() < n {
+		return nil
+	}
+	ret := b.buf[b.off:b.off+n]
+	b.AdvanceBytes(n)
+	return ret
 }
 
 // Len returns the number of bytes left to be consumed

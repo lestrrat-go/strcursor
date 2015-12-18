@@ -73,7 +73,15 @@ func TestBuffer(t *testing.T) {
 		return
 	}
 
-	if !assert.Equal(t, "IIと日本語が入り交じった文章です", b.Consume(100)) {
+	if !assert.True(t, b.HasPrefixBytes([]byte{'I', 'I'}), "HasPrefixBytes returns true") {
+		return
+	}
+
+	if !assert.Equal(t, []byte{'I', 'I'}, b.ConsumeBytes(2), "ConsumeBytes matches") {
+		return
+	}
+
+	if !assert.Equal(t, "と日本語が入り交じった文章です", b.Consume(100)) {
 		return
 	}
 
