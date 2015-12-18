@@ -278,6 +278,11 @@ func (b *Cursor) ConsumeBytes(n int) []byte {
 	return ret
 }
 
+// OffsetBytes returns the current byte offset
+func (b *Cursor) OffsetBytes() int {
+	return b.off
+}
+
 // Len returns the number of bytes left to be consumed
 func (b *Cursor) Len() int {
 	return b.bufmax - b.off
