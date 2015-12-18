@@ -13,13 +13,15 @@ import (
 
 // Cursor allows you to inspect small chunks of characters efficiently
 type Cursor struct {
-	off       int    // raw offset, or how many bytes we have already consumed
-	buf       []byte // raw byte buffer. this should be immutable during the lifecycle of this buffer
-	bufmax    int
+	off       int        // raw offset, or how many bytes we have already consumed
+	buf       []byte     // raw byte buffer. this should be immutable during the lifecycle of this buffer
+	bufmax    int        // size of the raw buffer
 	cache     []rune     // list of runes we have already decoded, but haven't consumed
 	cacheoff  int        // cache offset, or how many bytes we have already decoded
 	random    *rand.Rand // random source for purge
 	nextpurge int        // purge the underlying cache slice buffer after this many bytes read
+	lineno    int        // current line number
+	lastnl    int        // location of the previous new line
 }
 
 // PurgeThreshold is the global threshold for when the Cursor should
@@ -29,7 +31,7 @@ var PurgeThreshold = 1024 * 1024 * 10 // 10MB
 // New creates a new cursor
 func New(b []byte) *Cursor {
 	l := len(b)
-	buf := &Cursor{buf: b, bufmax: l}
+	buf := &Cursor{buf: b, bufmax: l, lineno: 1}
 	if l > PurgeThreshold { // start purging slices if buffer is this big
 		buf.random = rand.New(rand.NewSource(time.Now().UnixNano()))
 		buf.nextpurge = buf.random.Intn(l)
@@ -80,7 +82,7 @@ func (b *Cursor) PeekBytes(n int) []byte {
 		return b.buf[b.off:]
 	}
 
-	return b.buf[b.off:b.off+n]
+	return b.buf[b.off : b.off+n]
 }
 
 // Peek returns the n-th rune in the buffer (base 1, so if you want the
@@ -243,7 +245,7 @@ func (b *Cursor) ConsumePrefix(s string) bool {
 	return true
 }
 
-// Consume consumes n characters. This is usually used in conjunction with Peek(): 
+// Consume consumes n characters. This is usually used in conjunction with Peek():
 // after you Peek() for the range you want, you can call Consume with that many
 // number of characters that want. This method does NOT check if you have enough
 // characters in your buffer, so if you happen to have less than requested, it will
@@ -271,7 +273,7 @@ func (b *Cursor) ConsumeBytes(n int) []byte {
 	if b.Len() < n {
 		return nil
 	}
-	ret := b.buf[b.off:b.off+n]
+	ret := b.buf[b.off : b.off+n]
 	b.AdvanceBytes(n)
 	return ret
 }
@@ -285,4 +287,73 @@ func (b *Cursor) Len() int {
 // left to be consumed
 func (b *Cursor) HasChars(n int) bool {
 	return b.fill(n)
+}
+
+// CharLen retusn the number of bytes required to read n characters
+// from the cursor. returns 0 if n <= 0, or there are not enough
+// characters in the cursor
+func (b *Cursor) CharLen(n int) int {
+	if n <= 0 {
+		return 0
+	}
+
+	if !b.fill(n) {
+		return 0
+	}
+
+	l := 0
+	for i := 0; i < n; i++ {
+		l += utf8.RuneLen(b.cache[i])
+	}
+	return l
+}
+
+func (b *Cursor) seekNL() {
+	// only calculate the line number if b.lastnl is less the b.off
+	// which is, most of the case
+	for base := b.lastnl; base < b.off; {
+		pos := bytes.IndexByte(b.buf[base:b.off-1], 0xa)
+
+		// couldn't find anything, leave me off
+		if pos == -1 {
+			break
+		}
+
+		// pos could be over b.off, which means we don't want to count it in
+		if pos > b.off {
+			break
+		}
+		base += pos + 1
+		b.lineno++
+		b.lastnl = base
+		if debug.Enabled {
+			debug.Printf("  -> found 0x20 at position %d, lineno = %d", b.lastnl, b.lineno)
+		}
+	}
+}
+
+// Column returns the byte offset since the previous new line.
+// The return value is starts at 1.
+func (b *Cursor) Column() int {
+	b.seekNL()
+	if b.lastnl < 0 {
+		return 1
+	}
+	debug.Printf("b.off = %d, b.lastnl = %d, column = %d", b.off, b.lastnl, b.off-b.lastnl+1)
+	return b.off - b.lastnl + 1
+}
+
+// LineNumber returns the current line number. Line numbers start at 1,
+// and are incremented only if you go PAST a 0xa. In otherwords, if
+// you advance a cursor right on top of a 0xa, then you still won't
+// see a line increment.
+//
+// Line numbers are currently calculated on demand
+func (b *Cursor) LineNumber() int {
+	if debug.Enabled {
+		debug.Printf("Cursor.LineNumber")
+	}
+
+	b.seekNL()
+	return b.lineno
 }

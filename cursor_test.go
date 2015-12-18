@@ -115,3 +115,58 @@ func TestBuffer(t *testing.T) {
 		return
 	}
 }
+
+func TestLineno(t *testing.T) {
+	b := strcursor.New([]byte(`Alice
+Bob
+Charlie
+David
+Ellis`))
+
+	// Before doing anything
+	if !assert.Equal(t, 1, b.LineNumber(), "LineNumber == 1") {
+		return
+	}
+	if !assert.Equal(t, 1, b.Column(), "Column == 1") {
+		return
+	}
+
+	b.Next() // 'A'
+	if !assert.Equal(t, 1, b.LineNumber(), "LineNumber still 1") {
+		return
+	}
+	if !assert.Equal(t, 2, b.Column(), "Column == 2") {
+		return
+	}
+
+	b.Consume(7) // 'lice\nBo'
+	if !assert.Equal(t, 2, b.LineNumber(), "LineNumber == 2") {
+		return
+	}
+	if !assert.Equal(t, 3, b.Column(), "Column == 3") {
+		return
+	}
+
+	if !assert.Equal(t, "b\nCharlie\n", b.Consume(10), "Consume(10)") {
+		return
+	}
+	if !assert.Equal(t, 3, b.LineNumber(), "LineNumber == 3") {
+		return
+	}
+	if !assert.Equal(t, 9, b.Column(), "Column == 9") {
+		return
+	}
+
+	if !assert.Equal(t, "David\nEllis", b.Consume(12), "Consume(12)") {
+		return
+	}
+
+	if !assert.Equal(t, 5, b.LineNumber(), "LineNumber == 5") {
+		return
+	}
+
+	if !assert.Equal(t, 5, b.LineNumber(), "LineNumber == 5 (second time)") {
+		return
+	}
+
+}
