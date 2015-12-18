@@ -43,15 +43,15 @@ func (b *Cursor) Bytes() []byte {
 
 // fills the rune cache. returns true if we have enough to serve n runes
 func (b *Cursor) fill(n int) bool {
+	if len(b.cache) >= n {
+		return true
+	}
+
 	if b.Done() {
 		if debug.Enabled {
 			debug.Printf("  -> already done, false")
 		}
 		return false
-	}
-
-	if len(b.cache) >= n {
-		return true
 	}
 
 	for len(b.cache) < n {
@@ -207,4 +207,15 @@ func (b *Cursor) Consume(n int) string {
 	s := string(b.cache[:n])
 	b.Advance(n)
 	return s
+}
+
+// Len returns the number of bytes left to be consumed
+func (b *Cursor) Len() int {
+	return b.bufmax - b.off
+}
+
+// HasChars returns true if this Cursor contains at least n characters
+// left to be consumed
+func (b *Cursor) HasChars(n int) bool {
+	return b.fill(n)
 }

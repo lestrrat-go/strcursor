@@ -51,6 +51,10 @@ func TestBuffer(t *testing.T) {
 		return
 	}
 
+	if !assert.True(t, b.HasChars(5), "HasChars(5) returns true") {
+		return
+	}
+
 	for i := 0; i < 5; i++ {
 		if !assert.True(t, utf8.ValidRune(b.Next()), "utf8.Valid(b.Next()) is true") {
 			return
@@ -58,6 +62,14 @@ func TestBuffer(t *testing.T) {
 	}
 
 	if !assert.Equal(t, "ASC", b.Consume(3)) {
+		return
+	}
+
+	if !assert.True(t, b.HasChars(17), "HasChars(17) returns true") {
+		return
+	}
+
+	if !assert.False(t, b.HasChars(18), "HasChars(18) returns false") {
 		return
 	}
 
