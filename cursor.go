@@ -85,6 +85,18 @@ func (b *Cursor) PeekBytes(n int) []byte {
 	return b.buf[b.off : b.off+n]
 }
 
+// PeekString returns a string with n characters from the beginning of the
+// cursor without advancing it
+func (b *Cursor) PeekString(n int) string {
+	if b.Done() {
+		return ""
+	}
+	if !b.fill(n) {
+		return ""
+	}
+	return string(b.cache[:n])
+}
+
 // Peek returns the n-th rune in the buffer (base 1, so if you want the
 // 8th rune, you use n = 8, not n = 7)
 func (b *Cursor) Peek(n int) rune {
@@ -361,4 +373,15 @@ func (b *Cursor) LineNumber() int {
 
 	b.seekNL()
 	return b.lineno
+}
+
+// CurrentLine returns the current line as a string, up to the byte offset
+// where our cursor is pointing to. This comes in handy when you report errors
+func (b *Cursor) CurrentLine() string {
+	start := b.lastnl
+	if start < 0 {
+		start = 0
+	}
+
+	return string(b.buf[start:b.off])
 }
