@@ -2,6 +2,7 @@ package strcursor
 
 import (
 	"bytes"
+	"io/ioutil"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -56,15 +57,33 @@ func TestByteCursorConsume(t *testing.T) {
 	rdr := strings.NewReader(`はろ〜、World!`)
 	cur := NewByteCursor(rdr)
 
-	if !assert.True(t, cur.HasPrefix(`はろ〜`), "cur.HasPrefix() succeeds") {
+	if !assert.True(t, cur.HasPrefixString(`はろ〜`), "cur.HasPrefix() succeeds") {
 		return
 	}
 
-	if !assert.True(t, cur.Consume(`はろ〜`), "cur.Consume() succeeds") {
+	if !assert.True(t, cur.ConsumeString(`はろ〜`), "cur.Consume() succeeds") {
 		return
 	}
 
-	if !assert.False(t, cur.HasPrefix(`はろ〜`), "cur.HasPrefix() fails") {
+	if !assert.False(t, cur.HasPrefixString(`はろ〜`), "cur.HasPrefix() fails") {
+		return
+	}
+}
+
+func TestByteCursorReader(t *testing.T) {
+	rdr := strings.NewReader(string([]byte{0xfe,0xff}) + "はろ〜、World!")
+	cur := NewByteCursor(rdr)
+
+	if !assert.True(t, cur.Consume([]byte{0xfe, 0xff}), "Consume should succeed") {
+		return
+	}
+
+	buf, err := ioutil.ReadAll(cur)
+	if !assert.NoError(t, err, "ioutil.ReadAll should succeed") {
+		return
+	}
+
+	if !assert.Equal(t, buf, []byte(`はろ〜、World!`), "Read content matches") {
 		return
 	}
 }

@@ -115,7 +115,7 @@ func (c *ByteCursor) PeekN(n int) byte {
 	return c.buf[n-1]
 }
 
-func (c *ByteCursor) hasPrefix(s string, consume bool) bool {
+func (c *ByteCursor) hasPrefix(s []byte, consume bool) bool {
 	n := len(s)
 	if err := c.fillBuffer(n); err != nil {
 		return false
@@ -131,10 +131,42 @@ func (c *ByteCursor) hasPrefix(s string, consume bool) bool {
 	return true
 }
 
-func (c *ByteCursor) HasPrefix(s string) bool {
+func (c *ByteCursor) HasPrefix(s []byte) bool {
 	return c.hasPrefix(s, false)
 }
 
-func (c *ByteCursor) Consume(s string) bool {
+func (c *ByteCursor) Consume(s []byte) bool {
 	return c.hasPrefix(s, true)
+}
+
+func (c *ByteCursor) HasPrefixString(s string) bool {
+	return c.hasPrefix([]byte(s), false)
+}
+
+func (c *ByteCursor) ConsumeString(s string) bool {
+	return c.hasPrefix([]byte(s), true)
+}
+
+// Read fulfills the io.Reader interface
+func (c *ByteCursor) Read(buf []byte) (int, error) {
+	nread := 0
+	// Do we have a read ahead buffer?
+	if c.bufpos < c.buflen {
+		l := len(buf)
+		if l >= c.buflen-c.bufpos {
+			// their buffer is greater thant what we have.
+			// just copy our contents over, and perform a limited read from
+			// the underlying io.Reader
+			copy(buf, c.buf[c.bufpos:])
+			nread = c.buflen - c.bufpos
+			buf = buf[nread:]   // advance so io.Read starts at the right place
+			c.bufpos = c.buflen // avoid copying next time
+		} else {
+			copy(buf, c.buf[c.bufpos:c.bufpos+l])
+			return l, nil
+		}
+	}
+
+	n, err := c.in.Read(buf)
+	return n + nread, err
 }
