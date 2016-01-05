@@ -1,6 +1,7 @@
 package strcursor
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -9,7 +10,11 @@ import (
 )
 
 func TestRuneCursorBasic(t *testing.T) {
-	rdr := strings.NewReader(`はろ〜、World!`)
+	buf := bytes.Buffer{}
+	for i := 0; i < 100; i++ {
+		buf.WriteString(`はろ〜、World!`)
+	}
+	rdr := bytes.NewReader(buf.Bytes())
 	cur := NewRuneCursor(rdr)
 
 	{
@@ -32,8 +37,13 @@ func TestRuneCursorBasic(t *testing.T) {
 		}
 	}
 
+	runecount := utf8.RuneCount(buf.Bytes())
+	count := 0
 	for r := cur.Cur(); r != utf8.RuneError; r = cur.Cur() {
-		t.Logf("%c", r)
+		count++
+	}
+	if !assert.Equal(t, count, runecount, "Read expected count of runes") {
+		return
 	}
 
 	if !assert.True(t, cur.Done(), "cur.Done() should be true") {
@@ -88,4 +98,3 @@ Charlie`)
 		return
 	}
 }
-

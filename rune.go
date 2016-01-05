@@ -11,10 +11,10 @@ import (
 type RuneCursor struct {
 	buf      []byte    // scratch bufer, read in from the io.Reader
 	buflen   int       // size of scratch buffer
-	bufpos   int			 // amount consumed within the scratch buffer
+	bufpos   int       // amount consumed within the scratch buffer
 	column   int       // column number
 	in       io.Reader // input source
-	lineno   int			 // line number
+	lineno   int       // line number
 	nread    int       // number of bytes consumed so far
 	rabuf    *runebuf  // Read-ahead buffer.
 	rabuflen int       // Number of runes in read-ahead buffer
@@ -84,6 +84,10 @@ func (c *RuneCursor) fillRuneBuffer(n int) error {
 		return nil
 	}
 
+	if c.buflen == 0 {
+		return io.EOF
+	}
+
 	// Fill the buffer until we have n runes. However, make sure to
 	// detect if we have a failure loop
 	prevrabuflen := c.rabuflen
@@ -109,26 +113,18 @@ func (c *RuneCursor) fillRuneBuffer(n int) error {
 		}
 
 		// reset bufpos.
-		if c.bufpos > c.buflen {
-			// If bufpos is for some reason > c.buflen, just set it to 0
-			c.bufpos = 0
-		} else {
-			// Otherwise, the remaining bytes up to buflen is the content
-			// that is yet to be consumed
-			c.bufpos = c.buflen - c.bufpos
-		}
-		n, err := c.in.Read(c.buf[c.bufpos:])
-		if n == 0 && err != nil {
+		nread, err := c.in.Read(c.buf[c.buflen-c.bufpos:])
+		if nread == 0 && err != nil {
 			// Oh, we're done. really done.
 			c.buf = []byte{}
 			c.buflen = 0
 			return err
 		}
-		c.buflen = n
+		c.buflen = nread + (c.buflen - c.bufpos)
+		c.bufpos = 0
 		// well, we read something. see if we can fill the rune buffer
 		c.decodeIntoRuneBuffer()
 
-		// let the next section handle the error
 		if prevrabuflen == c.rabuflen {
 			c.buf = []byte{}
 			c.buflen = 0
