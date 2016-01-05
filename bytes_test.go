@@ -2,6 +2,7 @@ package strcursor
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 	"unicode/utf8"
 
@@ -49,4 +50,21 @@ func TestByteCursorBasic(t *testing.T) {
 		return
 	}
 
+}
+
+func TestByteCursorConsume(t *testing.T) {
+	rdr := strings.NewReader(`はろ〜、World!`)
+	cur := NewByteCursor(rdr)
+
+	if !assert.True(t, cur.HasPrefix(`はろ〜`), "cur.HasPrefix() succeeds") {
+		return
+	}
+
+	if !assert.True(t, cur.Consume(`はろ〜`), "cur.Consume() succeeds") {
+		return
+	}
+
+	if !assert.False(t, cur.HasPrefix(`はろ〜`), "cur.HasPrefix() fails") {
+		return
+	}
 }

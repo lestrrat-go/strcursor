@@ -1,6 +1,7 @@
 package strcursor
 
 import (
+	"bytes"
 	"errors"
 	"io"
 )
@@ -112,4 +113,28 @@ func (c *ByteCursor) PeekN(n int) byte {
 	}
 
 	return c.buf[n-1]
+}
+
+func (c *ByteCursor) hasPrefix(s string, consume bool) bool {
+	n := len(s)
+	if err := c.fillBuffer(n); err != nil {
+		return false
+	}
+
+	if !bytes.HasPrefix(c.buf[c.bufpos:], []byte(s)) {
+		return false
+	}
+
+	if consume {
+		c.bufpos += n
+	}
+	return true
+}
+
+func (c *ByteCursor) HasPrefix(s string) bool {
+	return c.hasPrefix(s, false)
+}
+
+func (c *ByteCursor) Consume(s string) bool {
+	return c.hasPrefix(s, true)
 }
