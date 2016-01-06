@@ -163,6 +163,7 @@ func (c *ByteCursor) Read(buf []byte) (int, error) {
 			c.bufpos = c.buflen // avoid copying next time
 		} else {
 			copy(buf, c.buf[c.bufpos:c.bufpos+l])
+			c.bufpos += l
 			return l, nil
 		}
 	}
