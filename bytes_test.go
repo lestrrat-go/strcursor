@@ -2,13 +2,44 @@ package strcursor
 
 import (
 	"bytes"
-	"io/ioutil"
 	"strings"
 	"testing"
 	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestByteCursorReader(t *testing.T) {
+	pattern := `abcdefghijk`
+	buf := bytes.Buffer{}
+	for i := 0; i < 100; i++ {
+		buf.WriteString(pattern)
+	}
+	cur := NewByteCursor(&buf)
+
+	if !assert.True(t, cur.ConsumeString(pattern), "Consume succeeds") {
+		return
+	}
+
+	lpat := len(pattern)
+	readbuf := make([]byte, lpat)
+	for i := 0; i < 99; i++ {
+		n, err := cur.Read(readbuf)
+		if !assert.Equal(t, lpat, n, "Read %d bytes", n) {
+			return
+		}
+		if err != nil {
+			// It's okay to err, but only at the last iteration
+			if !assert.Equal(t, 98, "should be err only if it's the last iteration") {
+				return
+			}
+		}
+
+		if !assert.Equal(t, []byte(pattern), readbuf, "read buffer should match") {
+			return
+		}
+	}
+}
 
 func TestByteCursorBasic(t *testing.T) {
 	buf := bytes.Buffer{}
@@ -66,24 +97,6 @@ func TestByteCursorConsume(t *testing.T) {
 	}
 
 	if !assert.False(t, cur.HasPrefixString(`はろ〜`), "cur.HasPrefix() fails") {
-		return
-	}
-}
-
-func TestByteCursorReader(t *testing.T) {
-	rdr := strings.NewReader(string([]byte{0xfe,0xff}) + "はろ〜、World!")
-	cur := NewByteCursor(rdr)
-
-	if !assert.True(t, cur.Consume([]byte{0xfe, 0xff}), "Consume should succeed") {
-		return
-	}
-
-	buf, err := ioutil.ReadAll(cur)
-	if !assert.NoError(t, err, "ioutil.ReadAll should succeed") {
-		return
-	}
-
-	if !assert.Equal(t, buf, []byte(`はろ〜、World!`), "Read content matches") {
 		return
 	}
 }
