@@ -112,7 +112,7 @@ func (c *ByteCursor) PeekN(n int) byte {
 		return nilbyte
 	}
 
-	return c.buf[n-1]
+	return c.buf[c.bufpos+n-1]
 }
 
 func (c *ByteCursor) hasPrefix(s []byte, consume bool) bool {
