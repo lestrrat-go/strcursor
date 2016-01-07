@@ -171,6 +171,15 @@ func (c *RuneCursor) PeekN(n int) rune {
 	cur := c.rabuf
 	for i := 1; i < n; i++ {
 		cur = cur.next
+		if cur == nil {
+			break
+		}
+	}
+	// Note: This should not happen, because c.fillRuneBuffer should
+	// guarantee us that we have at least n elements. But we do this
+	// to avoid potential panics
+	if cur == nil {
+		return utf8.RuneError
 	}
 	return cur.val
 }
