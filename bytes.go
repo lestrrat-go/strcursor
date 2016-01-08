@@ -153,7 +153,12 @@ func (c *ByteCursor) Read(buf []byte) (int, error) {
 	if pdebug.Enabled {
 		g := pdebug.IPrintf("START ByteCursor.Read %d bytes", len(buf))
 		defer func() {
-			g.IRelease("END ByteCursor.Read '%s'", buf)
+			for i := 0; i < len(buf); i++ {
+				if buf[i] == 0x0 {
+					g.IRelease("END ByteCursor.Read '%s'", buf[:i])
+					break
+				}
+			}
 		}()
 	}
 
