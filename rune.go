@@ -266,6 +266,9 @@ func (c *RuneCursor) hasPrefix(s string, n int, consume bool) bool {
 			// match! if we have the consume flag set, change the pointers
 			if consume {
 				c.rabuf = cur.next
+				if c.rabuf == nil {
+					c.lastrabuf = nil
+				}
 				c.column = col
 				c.lineno += nl
 				c.rabuflen -= n
