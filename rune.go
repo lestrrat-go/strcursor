@@ -268,6 +268,7 @@ func (c *RuneCursor) hasPrefix(s string, n int, consume bool) bool {
 				c.rabuf = cur.next
 				c.column = col
 				c.lineno += nl
+				c.rabuflen -= n
 			}
 			return true
 		}
