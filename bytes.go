@@ -57,17 +57,16 @@ func (c *ByteCursor) fillBuffer(n int) error {
 		// when we have something left to consume in the buffer
 		copy(c.buf, c.buf[c.bufpos:])
 	}
-	// reset bufpos.
-	if c.bufpos >= c.buflen {
-		// If bufpos is for some reason > c.buflen, just set it to 0
-		c.bufpos = 0
-	} else {
-		// Otherwise, the remaining bytes up to buflen is the content
-		// that is yet to be consumed
-		c.bufpos = c.buflen - c.bufpos
-	}
 
-	nread, err := c.in.Read(c.buf[c.bufpos:])
+	// reset bufpos.
+	offset := c.buflen - c.bufpos
+	// "memclear"
+	for i := offset; i < c.buflen; i++ {
+		c.buf[i] = 0x0
+	}
+	c.bufpos = 0
+
+	nread, err := c.in.Read(c.buf[offset:])
 	if nread == 0 && err != nil {
 		// Oh, we're done. really done.
 		c.buf = []byte{}
@@ -75,7 +74,7 @@ func (c *ByteCursor) fillBuffer(n int) error {
 		return err
 	}
 
-	c.buflen = nread + c.bufpos
+	c.buflen = nread + offset
 	if c.buflen < n {
 		return errors.New("fillBuffer request exceeds buffer size")
 	}
