@@ -3,21 +3,25 @@ package strcursor
 import (
 	"errors"
 	"io"
+	"sync"
 	"unicode/utf8"
+
+	"github.com/lestrrat/go-pdebug"
 )
 
 // RuneCursor is a cursor for consumers that are interested in series of
 // runes (not bytes)
 type RuneCursor struct {
-	buf      []byte    // scratch bufer, read in from the io.Reader
-	buflen   int       // size of scratch buffer
-	bufpos   int       // amount consumed within the scratch buffer
-	column   int       // column number
-	in       io.Reader // input source
-	lineno   int       // line number
-	nread    int       // number of bytes consumed so far
-	rabuf    *runebuf  // Read-ahead buffer.
-	rabuflen int       // Number of runes in read-ahead buffer
+	buf       []byte    // scratch bufer, read in from the io.Reader
+	buflen    int       // size of scratch buffer
+	bufpos    int       // amount consumed within the scratch buffer
+	column    int       // column number
+	in        io.Reader // input source
+	lineno    int       // line number
+	nread     int       // number of bytes consumed so far
+	rabuf     *runebuf  // Read-ahead buffer.
+	lastrabuf *runebuf  // the end of read-ahead buffer.
+	rabuflen  int       // Number of runes in read-ahead buffer
 }
 
 type runebuf struct {
@@ -53,10 +57,34 @@ func NewRuneCursor(in io.Reader, nn ...int) *RuneCursor {
 	}
 }
 
+var runebufPool = sync.Pool{
+	New: allocRunebuf,
+}
+
+func allocRunebuf() interface{} {
+	return &runebuf{}
+}
+
+func getRunebuf() *runebuf {
+	return runebufPool.Get().(*runebuf)
+}
+
+func releaseRunebuf(rb *runebuf) {
+	rb.next = nil
+	runebufPool.Put(rb)
+}
+
 // decode the contents of c.buf into runes, and append to the
 // read-ahead rune buffer
 func (c *RuneCursor) decodeIntoRuneBuffer() error {
-	var last *runebuf
+	if pdebug.Enabled {
+		old := c.rabuflen
+		defer func() {
+			pdebug.Printf("RuneCursor.decodeIntoRuneBuffer %d -> %d runes", old, c.rabuflen)
+		}()
+	}
+
+	last := c.lastrabuf
 	for c.bufpos < c.buflen {
 		r, w := utf8.DecodeRune(c.buf[c.bufpos:])
 		if r == utf8.RuneError {
@@ -64,10 +92,9 @@ func (c *RuneCursor) decodeIntoRuneBuffer() error {
 		}
 		c.bufpos += w
 		c.rabuflen++
-		cur := &runebuf{
-			val:   r,
-			width: w,
-		}
+		cur := getRunebuf()
+		cur.val = r
+		cur.width = w
 		if last == nil {
 			c.rabuf = cur
 		} else {
@@ -75,16 +102,23 @@ func (c *RuneCursor) decodeIntoRuneBuffer() error {
 		}
 		last = cur
 	}
+	c.lastrabuf = last
 	return nil
 }
 
 func (c *RuneCursor) fillRuneBuffer(n int) error {
 	// Check if we have a read-ahead rune buffer
 	if c.rabuflen >= n {
+		if pdebug.Enabled {
+			pdebug.Printf("buflen (%d) >= requested (%d), no need to fill rune buffer", c.rabuflen, n)
+		}
 		return nil
 	}
 
 	if c.buflen == 0 {
+		if pdebug.Enabled {
+			pdebug.Printf("c.buflen == 0, must be at EOF")
+		}
 		return io.EOF
 	}
 
@@ -101,6 +135,9 @@ func (c *RuneCursor) fillRuneBuffer(n int) error {
 
 		// we got enough. return success
 		if c.rabuflen >= n {
+			if pdebug.Enabled {
+				pdebug.Printf("decodeIntoRuneBuffer ceated enough read ahead buffer (%d), can serve %d runes", c.rabuflen, n)
+			}
 			return nil
 		}
 
@@ -198,10 +235,15 @@ func (c *RuneCursor) Advance(n int) error {
 		} else {
 			c.column++
 		}
+		n := head
 		head = head.next
+		releaseRunebuf(n)
 		c.rabuflen--
 	}
 	c.rabuf = head
+	if c.rabuf == nil {
+		c.lastrabuf = nil
+	}
 	return nil
 }
 
