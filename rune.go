@@ -109,16 +109,10 @@ func (c *RuneCursor) decodeIntoRuneBuffer() error {
 func (c *RuneCursor) fillRuneBuffer(n int) error {
 	// Check if we have a read-ahead rune buffer
 	if c.rabuflen >= n {
-		if pdebug.Enabled {
-			pdebug.Printf("buflen (%d) >= requested (%d), no need to fill rune buffer", c.rabuflen, n)
-		}
 		return nil
 	}
 
 	if c.buflen == 0 {
-		if pdebug.Enabled {
-			pdebug.Printf("c.buflen == 0, must be at EOF")
-		}
 		return io.EOF
 	}
 
@@ -135,9 +129,6 @@ func (c *RuneCursor) fillRuneBuffer(n int) error {
 
 		// we got enough. return success
 		if c.rabuflen >= n {
-			if pdebug.Enabled {
-				pdebug.Printf("decodeIntoRuneBuffer ceated enough read ahead buffer (%d), can serve %d runes", c.rabuflen, n)
-			}
 			return nil
 		}
 
