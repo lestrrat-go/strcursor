@@ -63,6 +63,14 @@ func TestRuneCursorConsume(t *testing.T) {
 		return
 	}
 
+	if !assert.Equal(t, 4, cur.Column(), "Column matches") {
+		return
+	}
+
+	if !assert.Equal(t, `はろ〜`, cur.Line(), "Line matches") {
+		return
+	}
+
 	if !assert.False(t, cur.HasPrefix(`はろ〜`), "cur.HasPrefix() fails") {
 		return
 	}

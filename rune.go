@@ -1,6 +1,7 @@
 package strcursor
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"sync"
@@ -17,11 +18,12 @@ type RuneCursor struct {
 	bufpos    int       // amount consumed within the scratch buffer
 	column    int       // column number
 	in        io.Reader // input source
-	lineno    int       // line number
-	nread     int       // number of bytes consumed so far
-	rabuf     *runebuf  // Read-ahead buffer.
-	lastrabuf *runebuf  // the end of read-ahead buffer.
-	rabuflen  int       // Number of runes in read-ahead buffer
+	line      bytes.Buffer
+	lineno    int      // line number
+	nread     int      // number of bytes consumed so far
+	rabuf     *runebuf // Read-ahead buffer.
+	lastrabuf *runebuf // the end of read-ahead buffer.
+	rabuflen  int      // Number of runes in read-ahead buffer
 }
 
 type runebuf struct {
@@ -51,6 +53,7 @@ func NewRuneCursor(in io.Reader, nn ...int) *RuneCursor {
 		bufpos: n, // set to maximum to force filling up the bufer on first read
 		column: 1,
 		in:     in,
+		line:   bytes.Buffer{},
 		lineno: 1,
 		nread:  0,
 		rabuf:  nil,
@@ -85,10 +88,12 @@ func (c *RuneCursor) decodeIntoRuneBuffer() error {
 	}
 
 	last := c.lastrabuf
+	var err error
 	for c.bufpos < c.buflen {
 		r, w := utf8.DecodeRune(c.buf[c.bufpos:])
 		if r == utf8.RuneError {
-			return errors.New("failed to decode")
+			err = errors.New("failed to decode")
+			break
 		}
 		c.bufpos += w
 		c.rabuflen++
@@ -103,6 +108,11 @@ func (c *RuneCursor) decodeIntoRuneBuffer() error {
 		last = cur
 	}
 	c.lastrabuf = last
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -222,11 +232,13 @@ func (c *RuneCursor) Advance(n int) error {
 		c.nread += head.width
 		if head.val == '\n' {
 			c.lineno++
+			c.line.Reset()
 			c.column = 1
 		} else {
 			c.column++
 		}
 		n := head
+		c.line.WriteRune(n.val)
 		head = head.next
 		releaseRunebuf(n)
 		c.rabuflen--
@@ -244,8 +256,7 @@ func (c *RuneCursor) hasPrefix(s string, n int, consume bool) bool {
 		return false
 	}
 
-	nl := 0
-	col := c.column
+	count := 0
 	for cur := c.rabuf; cur != nil; cur = cur.next {
 		r, w := utf8.DecodeRuneInString(s)
 		if r == utf8.RuneError {
@@ -255,23 +266,11 @@ func (c *RuneCursor) hasPrefix(s string, n int, consume bool) bool {
 		if cur.val != r {
 			return false
 		}
-		if r == '\n' {
-			nl++
-			col = 1
-		} else {
-			col++
-		}
-
+		count++
 		if len(s) == 0 {
 			// match! if we have the consume flag set, change the pointers
 			if consume {
-				c.rabuf = cur.next
-				if c.rabuf == nil {
-					c.lastrabuf = nil
-				}
-				c.column = col
-				c.lineno += nl
-				c.rabuflen -= n
+				c.Advance(count)
 			}
 			return true
 		}
@@ -291,6 +290,11 @@ func (c *RuneCursor) HasPrefix(s string) bool {
 func (c *RuneCursor) Consume(s string) bool {
 	n := utf8.RuneCountInString(s)
 	return c.hasPrefix(s, n, true)
+}
+
+// Line returns the what we have processed in the current line
+func (c *RuneCursor) Line() string {
+	return c.line.String()
 }
 
 // LineNumber returns the current line number
