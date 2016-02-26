@@ -6,8 +6,6 @@ import (
 	"io"
 	"sync"
 	"unicode/utf8"
-
-	"github.com/lestrrat/go-pdebug"
 )
 
 // RuneCursor is a cursor for consumers that are interested in series of
@@ -80,13 +78,6 @@ func releaseRunebuf(rb *runebuf) {
 // decode the contents of c.buf into runes, and append to the
 // read-ahead rune buffer
 func (c *RuneCursor) decodeIntoRuneBuffer() error {
-	if pdebug.Enabled {
-		old := c.rabuflen
-		defer func() {
-			pdebug.Printf("RuneCursor.decodeIntoRuneBuffer %d -> %d runes", old, c.rabuflen)
-		}()
-	}
-
 	last := c.lastrabuf
 	var err error
 	for c.bufpos < c.buflen {

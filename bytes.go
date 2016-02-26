@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-
-	"github.com/lestrrat/go-pdebug"
 )
 
 const nilbyte = 0x0
@@ -150,18 +148,6 @@ func (c *ByteCursor) ConsumeString(s string) bool {
 
 // Read fulfills the io.Reader interface
 func (c *ByteCursor) Read(buf []byte) (int, error) {
-	if pdebug.Enabled {
-		g := pdebug.IPrintf("START ByteCursor.Read %d bytes", len(buf))
-		defer func() {
-			for i := 0; i < len(buf); i++ {
-				if buf[i] == 0x0 {
-					g.IRelease("END ByteCursor.Read '%s'", buf[:i])
-					break
-				}
-			}
-		}()
-	}
-
 	nread := 0
 	// Do we have a read ahead buffer?
 	if c.bufpos < c.buflen {
