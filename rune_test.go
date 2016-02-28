@@ -15,7 +15,8 @@ func TestRuneCursorBasic(t *testing.T) {
 		buf.WriteString(`はろ〜、World!`)
 	}
 	rdr := bytes.NewReader(buf.Bytes())
-	cur := NewRuneCursor(rdr)
+	var cur Cursor
+	cur = NewRuneCursor(rdr)
 
 	{
 		r := cur.PeekN(5)
@@ -55,11 +56,11 @@ func TestRuneCursorConsume(t *testing.T) {
 	rdr := strings.NewReader(`はろ〜、World!`)
 	cur := NewRuneCursor(rdr)
 
-	if !assert.True(t, cur.HasPrefix(`はろ〜`), "cur.HasPrefix() succeeds") {
+	if !assert.True(t, cur.HasPrefixString(`はろ〜`), "cur.HasPrefixString() succeeds") {
 		return
 	}
 
-	if !assert.True(t, cur.Consume(`はろ〜`), "cur.Consume() succeeds") {
+	if !assert.True(t, cur.ConsumeString(`はろ〜`), "cur.ConsumeString() succeeds") {
 		return
 	}
 
@@ -71,7 +72,7 @@ func TestRuneCursorConsume(t *testing.T) {
 		return
 	}
 
-	if !assert.False(t, cur.HasPrefix(`はろ〜`), "cur.HasPrefix() fails") {
+	if !assert.False(t, cur.HasPrefixString(`はろ〜`), "cur.HasPrefixString() fails") {
 		return
 	}
 }
@@ -89,13 +90,13 @@ Charlie`)
 		return
 	}
 
-	if !assert.True(t, cur.Consume("Al"), "cur.Consume() succeeds") {
+	if !assert.True(t, cur.ConsumeString("Al"), "cur.Consume() succeeds") {
 		return
 	}
 	if !assert.Equal(t, 3, cur.Column(), "cur.Column() is 3") {
 		return
 	}
-	if !assert.True(t, cur.Consume("ice\n"), "cur.Consume() succeeds") {
+	if !assert.True(t, cur.ConsumeString("ice\n"), "cur.Consume() succeeds") {
 		return
 	}
 

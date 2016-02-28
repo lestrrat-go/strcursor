@@ -2,6 +2,7 @@ package strcursor
 
 import (
 	"bytes"
+	"io"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -15,16 +16,22 @@ func TestByteCursorReader(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		buf.WriteString(pattern)
 	}
-	cur := NewByteCursor(&buf)
+	var cur Cursor
+	cur = NewByteCursor(&buf)
 
 	if !assert.True(t, cur.ConsumeString(pattern), "Consume succeeds") {
+		return
+	}
+
+	rdr, ok := cur.(io.Reader)
+	if !assert.True(t, ok, "ByteCursor should be an io.Reader") {
 		return
 	}
 
 	lpat := len(pattern)
 	readbuf := make([]byte, lpat)
 	for i := 0; i < 99; i++ {
-		n, err := cur.Read(readbuf)
+		n, err := rdr.Read(readbuf)
 		if !assert.Equal(t, lpat, n, "Read %d bytes", n) {
 			return
 		}
@@ -51,7 +58,7 @@ func TestByteCursorBasic(t *testing.T) {
 
 	{
 		r := cur.PeekN(5)
-		if !assert.Equal(t, byte(0x82), r, "cur.PeekN(5) succeeds") {
+		if !assert.Equal(t, rune(byte(0x82)), r, "cur.PeekN(5) succeeds") {
 			return
 		}
 	}
@@ -70,7 +77,7 @@ func TestByteCursorBasic(t *testing.T) {
 	}
 
 	count := 0
-	for r := cur.Cur(); r != nilbyte; r = cur.Cur() {
+	for r := cur.Cur(); r != utf8.RuneError; r = cur.Cur() {
 		count++
 	}
 
