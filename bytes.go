@@ -4,18 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"unicode/utf8"
 )
-
-const nilbyte = 0x0
-
-type ByteCursor struct {
-	buf    []byte    // scratch bufer, read in from the io.Reader
-	buflen int       // size of scratch buffer
-	bufpos int       // amount consumed within the scratch buffer
-	column int       // column number
-	in     io.Reader // input source
-	lineno int       // line number
-}
 
 func NewByteCursor(in io.Reader, nn ...int) *ByteCursor {
 	var n int
@@ -39,6 +29,18 @@ func NewByteCursor(in io.Reader, nn ...int) *ByteCursor {
 		in:     in,
 		lineno: 1,
 	}
+}
+
+func (c ByteCursor) Column() int {
+	return c.column
+}
+
+func (c ByteCursor) Line() string {
+	return ""
+}
+
+func (c ByteCursor) LineNumber() int {
+	return c.lineno
 }
 
 func (c *ByteCursor) fillBuffer(n int) error {
@@ -92,26 +94,35 @@ func (c *ByteCursor) Advance(n int) error {
 		return err
 	}
 
+	if i := bytes.IndexByte(c.buf[c.bufpos:c.bufpos+n], '\n'); i > -1 {
+		c.lineno++
+		c.column = n - i + 1
+		c.line.Reset()
+		c.line.Write(c.buf[c.bufpos+i:c.bufpos+n])
+	} else {
+		c.column += n
+		c.line.Write(c.buf[c.bufpos:c.bufpos+n])
+	}
 	c.bufpos += n
 	return nil
 }
 
-func (c *ByteCursor) Cur() byte {
+func (c *ByteCursor) Cur() rune {
 	b := c.Peek()
 	c.Advance(1)
 	return b
 }
 
-func (c *ByteCursor) Peek() byte {
+func (c *ByteCursor) Peek() rune {
 	return c.PeekN(1)
 }
 
-func (c *ByteCursor) PeekN(n int) byte {
+func (c *ByteCursor) PeekN(n int) rune {
 	if err := c.fillBuffer(n); err != nil {
-		return nilbyte
+		return utf8.RuneError
 	}
 
-	return c.buf[c.bufpos+n-1]
+	return rune(c.buf[c.bufpos+n-1])
 }
 
 func (c *ByteCursor) hasPrefix(s []byte, consume bool) bool {

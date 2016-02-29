@@ -8,28 +8,6 @@ import (
 	"unicode/utf8"
 )
 
-// RuneCursor is a cursor for consumers that are interested in series of
-// runes (not bytes)
-type RuneCursor struct {
-	buf       []byte    // scratch bufer, read in from the io.Reader
-	buflen    int       // size of scratch buffer
-	bufpos    int       // amount consumed within the scratch buffer
-	column    int       // column number
-	in        io.Reader // input source
-	line      bytes.Buffer
-	lineno    int      // line number
-	nread     int      // number of bytes consumed so far
-	rabuf     *runebuf // Read-ahead buffer.
-	lastrabuf *runebuf // the end of read-ahead buffer.
-	rabuflen  int      // Number of runes in read-ahead buffer
-}
-
-type runebuf struct {
-	val   rune
-	width int
-	next  *runebuf
-}
-
 // NewRuneCursor creates a cursor that deals exclusively with runes
 func NewRuneCursor(in io.Reader, nn ...int) *RuneCursor {
 	var n int
@@ -269,16 +247,24 @@ func (c *RuneCursor) hasPrefix(s string, n int, consume bool) bool {
 	return false
 }
 
-// HasPrefix takes a string returns true if the rune buffer contains
+func (c *RuneCursor) HasPrefix(b []byte) bool {
+	return c.HasPrefixString(string(b))
+}
+
+// HasPrefixString takes a string returns true if the rune buffer contains
 // the exact sequence of runes. This method does NOT consume upon a match
-func (c *RuneCursor) HasPrefix(s string) bool {
+func (c *RuneCursor) HasPrefixString(s string) bool {
 	n := utf8.RuneCountInString(s)
 	return c.hasPrefix(s, n, false)
 }
 
+func (c *RuneCursor) Consume(b []byte) bool {
+	return c.ConsumeString(string(b))
+}
+
 // Consume takes a string and advances the cursor that many runes
 // if the rune buffer contains the exact sequence of runes
-func (c *RuneCursor) Consume(s string) bool {
+func (c *RuneCursor) ConsumeString(s string) bool {
 	n := utf8.RuneCountInString(s)
 	return c.hasPrefix(s, n, true)
 }
