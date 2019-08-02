@@ -283,3 +283,27 @@ func (c *RuneCursor) LineNumber() int {
 func (c *RuneCursor) Column() int {
 	return c.column
 }
+
+func (c *RuneCursor) Read(buf []byte) (int, error) {
+	nread := 0
+	// Do we have a read ahead buffer?
+	if c.bufpos < c.buflen {
+		l := len(buf)
+		if l >= c.buflen-c.bufpos {
+			// their buffer is greater thant what we have.
+			// just copy our contents over, and perform a limited read from
+			// the underlying io.Reader
+			copy(buf, c.buf[c.bufpos:])
+			nread = c.buflen - c.bufpos
+			buf = buf[nread:]   // advance so io.Read starts at the right place
+			c.bufpos = c.buflen // avoid copying next time
+		} else {
+			copy(buf, c.buf[c.bufpos:c.bufpos+l])
+			c.bufpos += l
+			return l, nil
+		}
+	}
+
+	n, err := c.in.Read(buf)
+	return n + nread, err
+}

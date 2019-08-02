@@ -6,6 +6,8 @@ import (
 )
 
 type Cursor interface {
+	io.Reader
+
 	// Advance moves the position by the requested count of runes.
 	Advance(int) error
 
