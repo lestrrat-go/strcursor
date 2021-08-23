@@ -31,6 +31,16 @@ func NewByteCursor(in io.Reader, nn ...int) *ByteCursor {
 	}
 }
 
+// Unused returns the unused portion of the underlying buffer.
+// Users should stop using the cursor before calling this method.
+func (c *ByteCursor) Unused() io.Reader {
+	ret := &Unused{rdr: c.in}
+	if buf := c.buf[c.bufpos:]; len(buf) > 0 {
+		ret.unused = buf
+	}
+	return ret
+}
+
 func (c ByteCursor) Column() int {
 	return c.column
 }
@@ -98,10 +108,10 @@ func (c *ByteCursor) Advance(n int) error {
 		c.lineno++
 		c.column = n - i + 1
 		c.line.Reset()
-		c.line.Write(c.buf[c.bufpos+i:c.bufpos+n])
+		c.line.Write(c.buf[c.bufpos+i : c.bufpos+n])
 	} else {
 		c.column += n
-		c.line.Write(c.buf[c.bufpos:c.bufpos+n])
+		c.line.Write(c.buf[c.bufpos : c.bufpos+n])
 	}
 	c.bufpos += n
 	return nil
