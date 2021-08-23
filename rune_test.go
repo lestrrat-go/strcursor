@@ -1,13 +1,21 @@
-package strcursor
+package strcursor_test
 
 import (
 	"bytes"
+	"io"
 	"strings"
 	"testing"
 	"unicode/utf8"
 
+	"github.com/lestrrat-go/strcursor"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	c := strcursor.NewRuneCursor(bytes.NewReader([]byte("あいうえお")))
+	var _ strcursor.Cursor = c
+	var _ io.Reader = c
+}
 
 func TestRuneCursorBasic(t *testing.T) {
 	buf := bytes.Buffer{}
@@ -15,8 +23,7 @@ func TestRuneCursorBasic(t *testing.T) {
 		buf.WriteString(`はろ〜、World!`)
 	}
 	rdr := bytes.NewReader(buf.Bytes())
-	var cur Cursor
-	cur = NewRuneCursor(rdr)
+	cur := strcursor.NewRuneCursor(rdr)
 
 	{
 		r := cur.PeekN(5)
@@ -54,7 +61,7 @@ func TestRuneCursorBasic(t *testing.T) {
 
 func TestRuneCursorConsume(t *testing.T) {
 	rdr := strings.NewReader(`はろ〜、World!`)
-	cur := NewRuneCursor(rdr)
+	cur := strcursor.NewRuneCursor(rdr)
 
 	if !assert.True(t, cur.HasPrefixString(`はろ〜`), "cur.HasPrefixString() succeeds") {
 		return
@@ -81,7 +88,7 @@ func TestRuneCursorNewLines(t *testing.T) {
 	rdr := strings.NewReader(`Alice
 Bob
 Charlie`)
-	cur := NewRuneCursor(rdr)
+	cur := strcursor.NewRuneCursor(rdr)
 
 	if !assert.Equal(t, 1, cur.LineNumber(), "cur.LineNumber() is 1") {
 		return

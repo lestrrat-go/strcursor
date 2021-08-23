@@ -13,7 +13,8 @@ import (
 )
 
 func init() {
-	var c strcursor.Cursor
+	c := strcursor.NewByteCursor(bytes.NewReader([]byte("Test")))
+	var _ strcursor.Cursor = c
 	var _ io.Reader = c
 }
 

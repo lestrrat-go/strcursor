@@ -144,6 +144,14 @@ func (c *RuneCursor) fillRuneBuffer(n int) error {
 	return errors.New("unrecoverable error")
 }
 
+func (c *RuneCursor) Unused() io.Reader {
+	ret := &Unused{rdr: c.in}
+	if buf := c.buf[c.bufpos:]; len(buf) > 0 {
+		ret.unused = buf
+	}
+	return ret
+}
+
 // Done returns true if there are no more runes left.
 func (c *RuneCursor) Done() bool {
 	if err := c.fillRuneBuffer(1); err != nil {

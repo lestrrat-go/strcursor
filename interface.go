@@ -48,6 +48,10 @@ type Cursor interface {
 	// It does not advance the position.
 	// On error, it returns utf8.RuneError
 	PeekN(int) rune
+
+	// Unused returns a new io.Reader that contains everything that has
+	// not already been consumed
+	Unused() io.Reader
 }
 
 // ByteCursor is a cursor for consumers that are interested in series of
